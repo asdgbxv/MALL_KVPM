@@ -1,0 +1,51 @@
+<!DOCTYPE html>
+<html lang="ms">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>KVPM Mall - Home</title>
+  <link rel="stylesheet" href="css/styles.css" />
+  <script src="https://www.gstatic.com/firebasejs/9.22.1/firebase-app-compat.js"></script>
+  <script src="https://www.gstatic.com/firebasejs/9.22.1/firebase-firestore-compat.js"></script>
+  <script src="https://www.gstatic.com/firebasejs/9.22.1/firebase-storage-compat.js"></script>
+</head>
+<body>
+  <header>
+    <div class="brand">KVPM Mall</div>
+    <div class="search">
+      <input id="search" placeholder="Cari produk..." />
+    </div>
+    <div class="nav-right">
+      <button class="btn secondary" onclick="location.href='buyer.html'">Pembeli</button>
+      <button class="btn secondary" onclick="location.href='seller.html'">Jadi Penjual</button>
+      <button id="openCartBtn" class="cart-btn">Troli <span id="cartCount" class="badge">0</span></button>
+    </div>
+  </header>
+
+  <main>
+    <section id="buyerSection">
+      <h2>Kedai & Produk</h2>
+      <div id="productsGrid" class="grid"></div>
+    </section>
+  </main>
+
+  <!-- Cart Drawer -->
+  <div id="cartDrawer" class="cart-drawer">
+    <header>
+      <h3>Troli Anda</h3>
+    </header>
+    <div id="cartItems"></div>
+    <div class="cart-footer">
+      <span>Total: <span id="cartTotal">RM 0</span></span>
+      <button id="checkoutBtn">Checkout</button>
+    </div>
+  </div>
+
+  <footer>
+    &copy; <span id="year"></span> KVPM Mall - Dibangunkan untuk projek. Versi demo sahaja.
+  </footer>
+
+  <script src="firebase-config.js"></script>
+  <script src="buyer.js"></script>
+</body>
+</html>

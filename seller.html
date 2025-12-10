@@ -1,0 +1,43 @@
+<!DOCTYPE html>
+<html lang="ms">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Penjual - KVPM Mall</title>
+  <link rel="stylesheet" href="css/styles.css" />
+  <script src="https://www.gstatic.com/firebasejs/9.22.1/firebase-app-compat.js"></script>
+  <script src="https://www.gstatic.com/firebasejs/9.22.1/firebase-firestore-compat.js"></script>
+  <script src="https://www.gstatic.com/firebasejs/9.22.1/firebase-storage-compat.js"></script>
+</head>
+<body>
+  <header>
+    <div class="brand">KVPM Mall</div>
+    <div class="nav-right">
+      <button class="btn secondary" onclick="location.href='login.html'">Log Masuk</button>
+      <button class="btn secondary" onclick="location.href='buyer.html'">Kembali ke Pembeli</button>
+    </div>
+  </header>
+
+  <main>
+    <section id="sellerSection">
+      <h2>Dashboard Penjual</h2>
+      <div class="add-product-card">
+        <h3>Tambah Produk</h3>
+        <input id="p_name" placeholder="Nama Produk"><br>
+        <input id="p_price" type="number" placeholder="Harga (RM)"><br>
+        <input id="p_stock" type="number" placeholder="Stok"><br>
+        <input id="p_image" type="file" accept="image/*"><br>
+        <button onclick="addProduct()" class="btn">Tambah Produk</button>
+      </div>
+      <div id="sellerProducts" class="grid"></div>
+    </section>
+  </main>
+
+  <footer>
+    &copy; <span id="year"></span> KVPM Mall - Dibangunkan untuk projek. Versi demo sahaja.
+  </footer>
+
+  <script src="firebase-config.js"></script>
+  <script src="seller.js"></script>
+</body>
+</html>

@@ -1,0 +1,58 @@
+<!DOCTYPE html>
+<html lang="ms">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Log Masuk - KVPM Mall</title>
+  <link rel="stylesheet" href="css/styles.css" />
+</head>
+<body>
+  <header>
+    <div class="brand">KVPM Mall</div>
+    <div class="nav-right">
+      <button class="btn secondary" onclick="location.href='buyer.html'">Pembeli</button>
+      <button class="btn secondary" onclick="location.href='seller.html'">Penjual</button>
+    </div>
+  </header>
+
+  <main>
+    <section class="auth-wrapper">
+      <div class="auth-cta">
+        <div>
+          <p class="badge-text" id="loginRoleBadge">Pembeli</p>
+          <h2 id="loginTitle">Log masuk KVPM Mall</h2>
+          <p class="muted">Gunakan emel dan kata laluan untuk akses. Akaun contoh: pembeli@example.com / pembeli123 atau penjual@example.com / penjual123</p>
+        </div>
+        <div class="auth-tabs">
+          <button id="roleBuyer" class="active">Pembeli</button>
+          <button id="roleSeller">Penjual</button>
+        </div>
+      </div>
+      <div class="auth-panel">
+        <div class="auth-tabs">
+          <button id="loginTab" class="active">Log Masuk</button>
+          <button id="registerTab">Daftar</button>
+        </div>
+        <div class="auth-form">
+          <label for="loginEmail">Emel</label>
+          <input id="loginEmail" type="email" placeholder="nama@example.com">
+          <label for="loginPassword">Kata laluan</label>
+          <input id="loginPassword" type="password" placeholder="******">
+          <div class="auth-actions">
+            <button id="loginSubmit" class="btn">Teruskan</button>
+            <button id="loginLogout" class="btn danger" style="display:none;">Log Keluar</button>
+            <button id="loginToDashboard" class="btn secondary" style="display:none;">Pergi ke dashboard</button>
+          </div>
+          <div class="auth-status" id="loginStatus">Status: belum log masuk</div>
+        </div>
+      </div>
+    </section>
+  </main>
+
+  <footer>
+    &copy; <span id="year"></span> KVPM Mall - Dibangunkan untuk projek. Versi demo sahaja.
+  </footer>
+
+  <script src="login.js"></script>
+</body>
+</html>

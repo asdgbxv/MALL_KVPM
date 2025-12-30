@@ -121,8 +121,9 @@ function handleSubmit() {
   }
   const accounts = getAccounts();
   if (loginMode === 'register') {
-    if (accounts.some(acc => acc.email === email)) {
-      alert('Emel sudah wujud. Sila log masuk.');
+    const existingSameRole = accounts.find(acc => acc.email === email && acc.role === loginRole);
+    if (existingSameRole) {
+      alert('Emel sudah wujud untuk peranan ini. Sila log masuk.');
       setMode('login');
       return;
     }

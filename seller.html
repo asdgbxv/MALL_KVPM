@@ -13,7 +13,7 @@
   <header>
     <div class="brand">KVPM Mall</div>
     <div class="nav-right">
-      <button class="btn secondary" onclick="location.href='login.html'">Log Masuk</button>
+      <button class="btn secondary" onclick="location.href='index.html'">Log Masuk</button>
       <button class="btn secondary" onclick="location.href='buyer.html'">Kembali ke Pembeli</button>
     </div>
   </header>
@@ -21,6 +21,7 @@
   <main>
     <section id="sellerSection">
       <h2>Dashboard Penjual</h2>
+      <p class="muted">Produk yang kehabisan stok akan disembunyikan dari pembeli secara automatik, tetapi anda masih boleh edit dan tambah stok di sini.</p>
       <div class="add-product-card">
         <h3>Tambah Produk</h3>
         <input id="p_name" placeholder="Nama Produk"><br>
@@ -29,7 +30,23 @@
         <input id="p_image" type="file" accept="image/*"><br>
         <button onclick="addProduct()" class="btn">Tambah Produk</button>
       </div>
+      <h3>Produk Anda</h3>
       <div id="sellerProducts" class="grid"></div>
+
+      <div class="card" id="salesCard">
+        <div class="analytics-header">
+          <div>
+            <p class="badge-text">Graf jualan</p>
+            <h3>Prestasi & Jumlah Jualan</h3>
+          </div>
+          <div class="analytics-actions">
+            <button id="refreshSalesBtn" class="btn secondary small">Segarkan</button>
+            <button id="printChartBtn" class="btn secondary small">Cetak Graf</button>
+          </div>
+        </div>
+        <canvas id="salesChart" height="260"></canvas>
+        <div id="salesSummary" class="muted"></div>
+      </div>
     </section>
   </main>
 

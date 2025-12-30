@@ -2,6 +2,7 @@ const CART_KEY = 'kvpm_cart';
 const AUTH_KEY = 'kvpm_session';
 const ACCOUNTS_KEY = 'kvpm_accounts';
 let buyerAuthMode = 'login';
+let pendingOrder = null;
 
 const elements = {
   productsGrid: document.getElementById('productsGrid'),
@@ -23,7 +24,22 @@ const elements = {
   buyerTabRegister: document.getElementById('buyerTabRegister'),
   buyerAuthPanel: document.getElementById('buyerAuthPanel'),
   buyerOpenAuth: document.getElementById('buyerOpenAuth'),
+  filterMinPrice: document.getElementById('filterMinPrice'),
+  filterMaxPrice: document.getElementById('filterMaxPrice'),
+  filterInStock: document.getElementById('filterInStock'),
+  checkoutModal: document.getElementById('checkoutModal'),
+  checkoutSummary: document.getElementById('checkoutSummary'),
+  buyerPhone: document.getElementById('buyerPhone'),
+  qrContainer: document.getElementById('qrContainer'),
+  confirmPaymentBtn: document.getElementById('confirmPaymentBtn'),
+  receiptContainer: document.getElementById('receiptContainer'),
+  printReceiptBtn: document.getElementById('printReceiptBtn'),
+  closeCheckoutBtn: document.getElementById('closeCheckoutBtn'),
 };
+
+function formatCurrency(value) {
+  return `RM ${Number(value || 0).toFixed(2)}`;
+}
 
 function setFooterYear() {
   if (elements.year) {
@@ -147,7 +163,6 @@ function addToCart(id, name, price, image, stock) {
     cart.push({ id, name, price, image, qty: 1, stock: available });
   }
   saveCart(cart);
-  toggleCart(true);
 }
 
 function changeQty(id, delta) {
@@ -197,7 +212,7 @@ function renderCart(cart = getCart()) {
         <div class="muted">Qty: ${item.qty}</div>
       </div>
       <div class="cart-actions">
-        <div class="price">RM ${(item.price || 0).toFixed(2)}</div>
+        <div class="price">${formatCurrency(item.price || 0)}</div>
         <div class="qty-controls">
           <button class="btn small" data-action="dec" data-id="${item.id}">-</button>
           <button class="btn small" data-action="inc" data-id="${item.id}">+</button>
@@ -218,8 +233,17 @@ function renderCart(cart = getCart()) {
     });
   });
 
-  elements.cartTotal.textContent = `RM ${total.toFixed(2)}`;
+  elements.cartTotal.textContent = formatCurrency(total);
   updateCartBadge(cart);
+}
+
+function getFilters() {
+  const minVal = parseFloat(elements.filterMinPrice?.value);
+  const maxVal = parseFloat(elements.filterMaxPrice?.value);
+  const minPrice = Number.isFinite(minVal) ? Math.max(0, minVal) : null;
+  const maxPrice = Number.isFinite(maxVal) ? Math.max(0, maxVal) : null;
+  const inStockOnly = elements.filterInStock ? elements.filterInStock.checked : true;
+  return { minPrice, maxPrice, inStockOnly };
 }
 
 async function loadProducts(searchTerm = '') {
@@ -236,13 +260,21 @@ async function loadProducts(searchTerm = '') {
     }
 
     const products = snap.docs.map(doc => ({ id: doc.id, ...doc.data() }));
-    const term = searchTerm.trim().toLowerCase();
-    const filtered = term
-      ? products.filter(p => (p.name || '').toLowerCase().includes(term))
-      : products;
+    const searchTermClean = (typeof searchTerm === 'string' ? searchTerm : elements.searchInput?.value || '').trim().toLowerCase();
+    const { minPrice, maxPrice, inStockOnly } = getFilters();
+
+    const filtered = products.filter(p => {
+      const stockVal = Number(p.stock ?? 0);
+      const priceVal = Number(p.price || 0);
+      const nameMatch = searchTermClean ? (p.name || '').toLowerCase().includes(searchTermClean) : true;
+      const minMatch = minPrice === null ? true : priceVal >= minPrice;
+      const maxMatch = maxPrice === null ? true : priceVal <= maxPrice;
+      const stockMatch = inStockOnly ? stockVal > 0 : true;
+      return nameMatch && minMatch && maxMatch && stockMatch;
+    });
 
     if (!filtered.length) {
-      elements.productsGrid.innerHTML = '<p>Tiada produk tersedia.</p>';
+      elements.productsGrid.innerHTML = '<p>Tiada produk tersedia (mungkin stok habis atau penapis terlalu ketat).</p>';
       return;
     }
 
@@ -256,7 +288,7 @@ async function loadProducts(searchTerm = '') {
       card.innerHTML = `
         <img src="${imageUrl}" alt="${p.name}">
         <h3 class="title">${p.name}</h3>
-        <div class="price">RM ${priceVal.toFixed(2)}</div>
+        <div class="price">${formatCurrency(priceVal)}</div>
         <div class="stock">Stok: ${Number.isFinite(stockVal) ? stockVal : '-'}</div>
         <button class="btn small add-to-cart">${stockVal > 0 ? 'Tambah ke Troli' : 'Habis Stok'}</button>
       `;
@@ -275,7 +307,58 @@ async function loadProducts(searchTerm = '') {
   }
 }
 
-async function handleCheckout() {
+function openCheckoutModal() {
+  if (elements.checkoutModal) {
+    elements.checkoutModal.classList.add('open');
+  }
+  if (elements.buyerPhone) {
+    elements.buyerPhone.focus();
+  }
+}
+
+function resetCheckoutUI() {
+  pendingOrder = null;
+  if (elements.qrContainer) elements.qrContainer.innerHTML = '';
+  if (elements.receiptContainer) elements.receiptContainer.style.display = 'none';
+  if (elements.printReceiptBtn) elements.printReceiptBtn.style.display = 'none';
+  if (elements.confirmPaymentBtn) {
+    elements.confirmPaymentBtn.disabled = false;
+    elements.confirmPaymentBtn.textContent = 'Sahkan & Hantar Resit';
+  }
+}
+
+function closeCheckoutModal() {
+  resetCheckoutUI();
+  if (elements.checkoutModal) {
+    elements.checkoutModal.classList.remove('open');
+  }
+}
+
+function renderCheckoutSummary(order) {
+  if (!elements.checkoutSummary) return;
+  if (!order || !order.items.length) {
+    elements.checkoutSummary.innerHTML = '<p>Tiada item dalam troli.</p>';
+    return;
+  }
+  const lines = order.items
+    .map(item => `<li>${item.name} x${item.qty} — ${formatCurrency((item.price || 0) * (item.qty || 0))}</li>`)
+    .join('');
+  elements.checkoutSummary.innerHTML = `
+    <div class="summary-row"><span>Jumlah item</span><strong>${order.items.length}</strong></div>
+    <ul>${lines}</ul>
+    <div class="summary-row"><span>Jumlah perlu dibayar</span><strong>${formatCurrency(order.total)}</strong></div>
+  `;
+}
+
+function generateQrForOrder(order) {
+  if (!elements.qrContainer || !order) return;
+  elements.qrContainer.innerHTML = `
+    <img src="maybank-qr.png" alt="QR Maybank" class="qr-static">
+    <p class="muted" style="text-align:center;">Jumlah perlu dibayar: ${formatCurrency(order.total)}<br>Imbas QR ini di aplikasi Maybank / DuitNow.</p>
+  `;
+}
+
+async function startCheckoutFlow() {
   const cart = getCart();
   if (!cart.length) {
     alert('Troli kosong. Tambah produk dahulu.');
@@ -286,16 +369,145 @@ async function handleCheckout() {
     alert('Sila log masuk sebagai pembeli sebelum checkout.');
     return;
   }
-  const total = cart.reduce((sum, item) => sum + (item.price || 0) * (item.qty || 0), 0);
+
+  resetCheckoutUI();
 
   if (elements.checkoutBtn) {
     elements.checkoutBtn.disabled = true;
-    elements.checkoutBtn.textContent = 'Memproses...';
+    elements.checkoutBtn.textContent = 'Memeriksa stok...';
   }
 
   try {
+    const freshItems = [];
+    for (const item of cart) {
+      const ref = db.collection('products').doc(item.id);
+      const snap = await ref.get();
+      if (!snap.exists) {
+        throw new Error(`Produk "${item.name}" tiada.`);
+      }
+      const data = snap.data();
+      const currentStock = Number(data.stock || 0);
+      if (currentStock < item.qty) {
+        throw new Error(`Stok ${data.name || item.name} tidak mencukupi. Tinggal ${currentStock}.`);
+      }
+      const price = Number(data.price || item.price || 0);
+      freshItems.push({
+        ...item,
+        name: data.name || item.name,
+        price,
+        stock: currentStock,
+        sellerEmail: data.seller_email || 'unknown',
+        image: data.image_url || item.image,
+      });
+    }
+
+    const total = freshItems.reduce((sum, itm) => sum + (itm.price || 0) * (itm.qty || 0), 0);
+    pendingOrder = { items: freshItems, total, buyerEmail: user.email };
+
+    renderCheckoutSummary(pendingOrder);
+    generateQrForOrder(pendingOrder);
+    toggleCart(false);
+    openCheckoutModal();
+  } catch (err) {
+    console.error('Checkout gagal', err);
+    alert(err.message || 'Checkout gagal. Cuba lagi.');
+  } finally {
+    if (elements.checkoutBtn) {
+      elements.checkoutBtn.disabled = false;
+      elements.checkoutBtn.textContent = 'Checkout';
+    }
+  }
+}
+
+function renderReceipt(receiptData) {
+  if (!elements.receiptContainer) return;
+  const itemsHtml = receiptData.items
+    .map(item => {
+      const lineTotal = formatCurrency((item.price || 0) * (item.qty || 0));
+      return `
+        <div class="receipt-item-row">
+          <div>
+            <div class="item-name">${item.name}</div>
+            <div class="muted small">Qty ${item.qty} @ ${formatCurrency(item.price || 0)}</div>
+          </div>
+          <div class="item-amount">${lineTotal}</div>
+        </div>
+      `;
+    })
+    .join('');
+  const warning = receiptData.saveWarning
+    ? `<p class="muted text-danger">Amaran: ${receiptData.saveWarning}</p>`
+    : '';
+  elements.receiptContainer.innerHTML = `
+    <div class="receipt-header">
+      <div class="receipt-brand">
+        <div class="badge-text">Resit Pembayaran</div>
+        <h3>KVPM Mall</h3>
+      </div>
+      <div class="receipt-ref">
+        <span>No. Resit</span>
+        <strong>${receiptData.receiptNumber || receiptData.id}</strong>
+      </div>
+    </div>
+    <div class="receipt-meta">
+      <div>
+        <span>Emel Pembeli</span>
+        <strong>${receiptData.buyerEmail}</strong>
+      </div>
+      <div>
+        <span>No. Telefon</span>
+        <strong>${receiptData.buyerPhone}</strong>
+      </div>
+      <div>
+        <span>Tarikh</span>
+        <strong>${receiptData.createdAt ? receiptData.createdAt.toLocaleString() : new Date().toLocaleString()}</strong>
+      </div>
+    </div>
+    <div class="receipt-items">
+      <div class="receipt-items-header">
+        <h4>Butiran Pesanan</h4>
+        <span class="muted">Bayaran diterima</span>
+      </div>
+      ${itemsHtml}
+    </div>
+    <div class="receipt-total">
+      <span>Jumlah Dibayar</span>
+      <strong>${formatCurrency(receiptData.total)}</strong>
+    </div>
+    ${warning}
+    <p class="muted receipt-footer-note">Terima kasih kerana membeli di KVPM Mall. Simpan resit ini sebagai bukti pembayaran.</p>
+  `;
+  elements.receiptContainer.style.display = 'block';
+  if (elements.printReceiptBtn) {
+    elements.printReceiptBtn.style.display = 'inline-flex';
+  }
+}
+
+async function confirmPayment() {
+  if (!pendingOrder || !pendingOrder.items.length) {
+    alert('Tiada pesanan untuk diproses.');
+    return;
+  }
+  const user = getCurrentUser();
+  if (!user || user.role !== 'buyer') {
+    alert('Sesi tamat. Sila log masuk semula.');
+    return;
+  }
+  const phone = (elements.buyerPhone?.value || '').trim();
+  if (!phone) {
+    alert('Masukkan nombor telefon sebelum membuat bayaran.');
+    return;
+  }
+
+  if (elements.confirmPaymentBtn) {
+    elements.confirmPaymentBtn.disabled = true;
+    elements.confirmPaymentBtn.textContent = 'Memproses & menjana resit...';
+  }
+
+  try {
+    const orderItems = [];
     await db.runTransaction(async (tx) => {
-      for (const item of cart) {
+      for (const item of pendingOrder.items) {
         const ref = db.collection('products').doc(item.id);
         const snap = await tx.get(ref);
         if (!snap.exists) {
@@ -304,23 +516,67 @@ async function handleCheckout() {
         const data = snap.data();
         const currentStock = Number(data.stock || 0);
         if (currentStock < item.qty) {
-          throw new Error(`Stok ${item.name} tidak mencukupi. Tinggal ${currentStock}.`);
+          throw new Error(`Stok ${data.name || item.name} tidak mencukupi. Tinggal ${currentStock}.`);
         }
+        const price = Number(data.price || item.price || 0);
+        const sellerEmail = data.seller_email || item.sellerEmail || 'unknown';
+        orderItems.push({
+          productId: item.id,
+          name: data.name || item.name,
+          qty: item.qty,
+          price,
+          sellerEmail,
+        });
         tx.update(ref, { stock: currentStock - item.qty });
       }
     });
 
-    alert(`Checkout berjaya! Jumlah: RM ${total.toFixed(2)}. Pesanan akan diproses.`);
+    const paidTotal = orderItems.reduce((sum, itm) => sum + (itm.price || 0) * (itm.qty || 0), 0);
+    const sellerTotals = orderItems.reduce((map, itm) => {
+      const key = itm.sellerEmail || 'unknown';
+      map[key] = (map[key] || 0) + (itm.price || 0) * (itm.qty || 0);
+      return map;
+    }, {});
+    const sellerEmails = Object.keys(sellerTotals).filter(Boolean);
+    const receiptNumber = `ORD-${Date.now()}`;
+    const receiptData = {
+      receiptNumber,
+      buyerEmail: user.email,
+      buyerPhone: phone,
+      total: paidTotal,
+      items: orderItems,
+      createdAt: new Date(),
+    };
+
+    try {
+      const orderDoc = await db.collection('orders').add({
+        buyerEmail: user.email,
+        buyerPhone: phone,
+        items: orderItems,
+        total: paidTotal,
+        seller_totals: sellerTotals,
+        seller_emails: sellerEmails,
+        receipt_number: receiptNumber,
+        created_at: firebase.firestore.FieldValue.serverTimestamp(),
+      });
+      receiptData.id = orderDoc.id;
+    } catch (saveErr) {
+      console.error('Gagal simpan rekod pesanan, resit masih dijana', saveErr);
+      receiptData.saveWarning = 'Rekod pesanan tidak sempat disimpan. Simpan resit ini sebagai bukti bayaran.';
+    }
+
+    renderReceipt(receiptData);
+
     saveCart([]);
-    toggleCart(false);
+    pendingOrder = null;
     loadProducts();
   } catch (err) {
     console.error('Checkout gagal', err);
     alert(err.message || 'Checkout gagal. Cuba lagi.');
   } finally {
-    if (elements.checkoutBtn) {
-      elements.checkoutBtn.disabled = false;
-      elements.checkoutBtn.textContent = 'Checkout';
+    if (elements.confirmPaymentBtn) {
+      elements.confirmPaymentBtn.disabled = false;
+      elements.confirmPaymentBtn.textContent = 'Sahkan & Hantar Resit';
     }
   }
 }
@@ -335,7 +591,15 @@ function bindEvents() {
   }
 
   if (elements.checkoutBtn) {
-    elements.checkoutBtn.addEventListener('click', handleCheckout);
+    elements.checkoutBtn.addEventListener('click', startCheckoutFlow);
+  }
+
+  if (elements.confirmPaymentBtn) {
+    elements.confirmPaymentBtn.addEventListener('click', confirmPayment);
+  }
+
+  if (elements.closeCheckoutBtn) {
+    elements.closeCheckoutBtn.addEventListener('click', closeCheckoutModal);
   }
 
   if (elements.searchInput) {
@@ -343,6 +607,21 @@ function bindEvents() {
       loadProducts(e.target.value);
     });
   }
+
+  if (elements.filterMinPrice) {
+    elements.filterMinPrice.addEventListener('input', () => loadProducts(elements.searchInput?.value || ''));
+  }
+  if (elements.filterMaxPrice) {
+    elements.filterMaxPrice.addEventListener('input', () => loadProducts(elements.searchInput?.value || ''));
+  }
+  if (elements.filterInStock) {
+    elements.filterInStock.addEventListener('change', () => loadProducts(elements.searchInput?.value || ''));
+  }
+
+  if (elements.printReceiptBtn) {
+    elements.printReceiptBtn.addEventListener('click', () => window.print());
+  }
+
   if (elements.buyerOpenAuth && elements.buyerAuthPanel) {
     elements.buyerOpenAuth.addEventListener('click', () => {
       elements.buyerAuthPanel.scrollIntoView({ behavior: 'smooth', block: 'center' });
@@ -367,8 +646,9 @@ function bindEvents() {
       }
       const accounts = getAccounts();
       if (buyerAuthMode === 'register') {
-        if (accounts.some(acc => acc.email === email)) {
-          alert('Emel sudah wujud. Sila log masuk.');
+        const existingSameRole = accounts.find(acc => acc.email === email && acc.role === 'buyer');
+        if (existingSameRole) {
+          alert('Emel sudah wujud untuk peranan Pembeli. Sila log masuk.');
           setBuyerMode('login');
           return;
         }
@@ -404,5 +684,9 @@ document.addEventListener('DOMContentLoaded', () => {
   renderAuthState();
   renderCart();
   updateCartBadge();
+  if (elements.filterInStock) {
+    elements.filterInStock.checked = true;
+  }
   loadProducts();
 });
+

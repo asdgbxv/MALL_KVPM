@@ -1,4 +1,4 @@
-p<!DOCTYPE html>
+<!DOCTYPE html>
 <html lang="ms">
 <head>
   <meta charset="UTF-8">
@@ -16,18 +16,69 @@ p<!DOCTYPE html>
       <input id="search" placeholder="Cari produk..." />
     </div>
     <div class="nav-right">
-      <button class="btn secondary" onclick="location.href='login.html'">Log Masuk</button>
+      <button class="btn secondary" onclick="location.href='index.html'">Log Masuk</button>
       <button class="btn secondary" onclick="location.href='seller.html'">Jadi Penjual</button>
       <button id="openCartBtn" class="cart-btn">Troli <span id="cartCount" class="badge">0</span></button>
     </div>
   </header>
 
   <main>
+    <section class="filter-bar" aria-label="Penapis produk">
+      <div class="filter-group">
+        <label for="filterMinPrice">Harga Minimum (RM)</label>
+        <input id="filterMinPrice" type="number" min="0" step="0.01" placeholder="0">
+      </div>
+      <div class="filter-group">
+        <label for="filterMaxPrice">Harga Maksimum (RM)</label>
+        <input id="filterMaxPrice" type="number" min="0" step="0.01" placeholder="Tiada had">
+      </div>
+      <label class="filter-checkbox">
+        <input id="filterInStock" type="checkbox" checked>
+        <span>Auto sembunyi produk habis stok</span>
+      </label>
+    </section>
+
     <section id="buyerSection">
       <h2>Kedai & Produk</h2>
       <div id="productsGrid" class="grid"></div>
     </section>
   </main>
+
+  <div id="checkoutModal" class="modal">
+    <div class="modal-content">
+      <header class="modal-header">
+        <div>
+          <p class="badge-text">Bayaran tanpa input jumlah</p>
+          <h3>Checkout & Resit</h3>
+        </div>
+        <button id="closeCheckoutBtn" class="btn secondary small">Tutup</button>
+      </header>
+
+      <div id="checkoutSummary" class="checkout-summary"></div>
+
+      <div class="form-row">
+        <label for="buyerPhone">No. Telefon Pembeli (wajib ketika bayar)</label>
+        <input id="buyerPhone" type="tel" placeholder="Contoh: 0123456789">
+      </div>
+
+      <div class="qr-row">
+        <div>
+          <h4>QR Auto Pay</h4>
+          <p class="muted">Jumlah pembayaran akan dimasukkan terus ke QR ini. Pembeli tidak perlu taip jumlah.</p>
+          <div id="qrContainer" class="qr-box"></div>
+        </div>
+        <div class="summary-side">
+          <div class="receipt-box muted">
+            <p>Semak ringkasan pesanan, kemudian klik "Sahkan & Hantar Resit". Stok akan ditolak serta-merta.</p>
+          </div>
+          <button id="confirmPaymentBtn" class="btn">Sahkan & Hantar Resit</button>
+        </div>
+      </div>
+
+      <div id="receiptContainer" class="receipt-box" style="display:none;"></div>
+      <button id="printReceiptBtn" class="btn secondary small" style="display:none;">Cetak Resit</button>
+    </div>
+  </div>
 
   <!-- Cart Drawer -->
   <div id="cartDrawer" class="cart-drawer">
@@ -47,6 +98,7 @@ p<!DOCTYPE html>
   </footer>
 
   <script src="firebase-config.js"></script>
+  <script src="qrcode.min.js"></script>
   <script src="buyer.js"></script>
 </body>
 </html>
